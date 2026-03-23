@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -33,26 +32,24 @@ fun ChatScreen(
     viewModel: ChatViewModel,
     onNavigateSettings: () -> Unit
 ) {
-    val state        = viewModel.state.collectAsState().value
-    val context      = LocalContext.current
-    val listState    = rememberLazyListState()
-    val coroutine    = rememberCoroutineScope()
+    val state     = viewModel.state.collectAsState().value
+    val context   = LocalContext.current
+    val listState = rememberLazyListState()
+    val coroutine = rememberCoroutineScope()
 
-    // Auto-scroll to bottom on new content
     val msgCount = state.messages.size + (if (state.streamingText.isNotEmpty()) 1 else 0)
     LaunchedEffect(msgCount) {
         if (msgCount > 0) listState.animateScrollToItem(msgCount - 1)
     }
 
-    // File picker launcher
     val fileLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
             coroutine.launch {
                 FilePickerUtil.processUri(context, uri)
-                    .onSuccess  { viewModel.setAttachment(it) }
-                    .onFailure  { viewModel.showError(it.message ?: "Could not read file") }
+                    .onSuccess { viewModel.setAttachment(it) }
+                    .onFailure { viewModel.showError(it.message ?: "Could not read file") }
             }
         }
     }
@@ -62,14 +59,12 @@ fun ChatScreen(
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── Top bar ──────────────────────────────────────────
             TopBar(
-                onMenuClick    = { HapticUtil.light(context); viewModel.setSidebarOpen(true) },
-                onNewChat      = { viewModel.newConversation() },
+                onMenuClick     = { HapticUtil.light(context); viewModel.setSidebarOpen(true) },
+                onNewChat       = { viewModel.newConversation() },
                 onSettingsClick = onNavigateSettings
             )
 
-            // ── Messages ─────────────────────────────────────────
             Box(modifier = Modifier.weight(1f)) {
                 if (state.messages.isEmpty() && !state.isStreaming) {
                     WelcomeScreen(isFirstSession = state.isFirstSession) { text ->
@@ -96,19 +91,18 @@ fun ChatScreen(
                         }
                     }
 
-                    // Scroll-to-bottom button
                     val showScroll by remember { derivedStateOf { listState.canScrollForward } }
-                    AnimatedVisibility(
-                        visible  = showScroll,
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
-                        enter    = fadeIn() + scaleIn(),
-                        exit     = fadeOut() + scaleOut()
-                    ) {
+                    if (showScroll) {
                         SmallFloatingActionButton(
                             onClick = {
                                 HapticUtil.light(context)
-                                coroutine.launch { listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1) }
+                                coroutine.launch {
+                                    listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+                                }
                             },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 8.dp),
                             containerColor = MaterialTheme.colorScheme.surface
                         ) {
                             Icon(Icons.Outlined.KeyboardArrowDown, "Scroll to bottom", modifier = Modifier.size(20.dp))
@@ -117,7 +111,6 @@ fun ChatScreen(
                 }
             }
 
-            // ── Error banner ─────────────────────────────────────
             state.error?.let { err ->
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -136,21 +129,19 @@ fun ChatScreen(
                 }
             }
 
-            // ── Input bar ────────────────────────────────────────
             InputBar(
-                text          = state.inputText,
-                onTextChange  = viewModel::onInputChange,
-                onSend        = { if (state.isStreaming) viewModel.stopStreaming() else viewModel.sendMessage() },
-                isStreaming   = state.isStreaming,
-                webSearchOn   = state.webSearchEnabled,
-                onWebToggle   = viewModel::toggleWebSearch,
+                text           = state.inputText,
+                onTextChange   = viewModel::onInputChange,
+                onSend         = { if (state.isStreaming) viewModel.stopStreaming() else viewModel.sendMessage() },
+                isStreaming    = state.isStreaming,
+                webSearchOn    = state.webSearchEnabled,
+                onWebToggle    = viewModel::toggleWebSearch,
                 attachmentName = state.attachment?.name,
                 onAttachClick  = { fileLauncher.launch("*/*") },
                 onAttachClear  = { viewModel.setAttachment(null) }
             )
         }
 
-        // ── Sidebar ───────────────────────────────────────────────
         SidebarDrawer(
             open          = state.sidebarOpen,
             conversations = state.conversations,
@@ -163,7 +154,6 @@ fun ChatScreen(
     }
 }
 
-// ── Top bar ────────────────────────────────────────────────────────
 @Composable
 private fun TopBar(onMenuClick: () -> Unit, onNewChat: () -> Unit, onSettingsClick: () -> Unit) {
     Row(
@@ -178,7 +168,7 @@ private fun TopBar(onMenuClick: () -> Unit, onNewChat: () -> Unit, onSettingsCli
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
-        TopBarButton(onClick = onNewChat)     { Icon(Icons.Outlined.Edit, "New chat", Modifier.size(20.dp)) }
+        TopBarButton(onClick = onNewChat) { Icon(Icons.Outlined.Edit, "New chat", Modifier.size(20.dp)) }
         Spacer(Modifier.width(8.dp))
         TopBarButton(onClick = onSettingsClick) { Icon(Icons.Outlined.Settings, "Settings", Modifier.size(20.dp)) }
     }
@@ -194,7 +184,6 @@ private fun TopBarButton(onClick: () -> Unit, content: @Composable () -> Unit) {
     ) { content() }
 }
 
-// ── Welcome screen ─────────────────────────────────────────────────
 @Composable
 private fun WelcomeScreen(isFirstSession: Boolean, onSuggestion: (String) -> Unit) {
     val context = LocalContext.current
@@ -228,7 +217,6 @@ private fun WelcomeScreen(isFirstSession: Boolean, onSuggestion: (String) -> Uni
     }
 }
 
-// ── Searching indicator ────────────────────────────────────────────
 @Composable
 fun SearchingIndicator() {
     Row(
@@ -244,7 +232,6 @@ fun SearchingIndicator() {
     }
 }
 
-// ── Input bar ──────────────────────────────────────────────────────
 @Composable
 private fun InputBar(
     text: String,
@@ -264,8 +251,6 @@ private fun InputBar(
         tonalElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-
-            // Attachment chip
             if (attachmentName != null) {
                 Row(
                     modifier = Modifier.padding(bottom = 6.dp)
@@ -289,18 +274,13 @@ private fun InputBar(
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Attach button
                 InputIconButton(onClick = onAttachClick) {
                     Icon(Icons.Outlined.AttachFile, "Attach file", Modifier.size(18.dp))
                 }
-
-                // Globe (web search)
                 InputIconButton(onClick = onWebToggle, highlighted = webSearchOn) {
                     Icon(Icons.Outlined.Language, "Web search", Modifier.size(18.dp),
                         tint = if (webSearchOn) AccentBlue else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-
-                // Text field
                 OutlinedTextField(
                     value         = text,
                     onValueChange = onTextChange,
@@ -313,33 +293,32 @@ private fun InputBar(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     )
                 )
-
-                // Send / Stop
                 val canSend = isStreaming || text.isNotBlank()
                 Box(
                     modifier = Modifier.size(44.dp).clip(CircleShape)
-                        .background(if (canSend) Brush.linearGradient(listOf(AccentBlue, AccentPurple)) else Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)))
+                        .background(
+                            if (canSend) Brush.linearGradient(listOf(AccentBlue, AccentPurple))
+                            else Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant))
+                        )
                         .clickable(enabled = canSend) { onSend() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         if (isStreaming) Icons.Outlined.Stop else Icons.Outlined.Send,
-                        "Send",
-                        Modifier.size(18.dp),
+                        "Send", Modifier.size(18.dp),
                         tint = if (canSend) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Active indicators
-            if (webSearchOn || attachmentName != null) {
-                Row(modifier = Modifier.padding(top = 4.dp, start = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (webSearchOn) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Outlined.Language, null, Modifier.size(11.dp), tint = AccentBlue)
-                            Text("Web search on", fontSize = 11.sp, color = AccentBlue)
-                        }
-                    }
+            if (webSearchOn) {
+                Row(
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(Icons.Outlined.Language, null, Modifier.size(11.dp), tint = AccentBlue)
+                    Text("Web search on", fontSize = 11.sp, color = AccentBlue)
                 }
             }
         }
