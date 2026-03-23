@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "230417181657-p13bi32aaatjvteglq08035ro8bnbdnt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eimemes.chat",
+            "certificate_hash": "26a31c32b413b3ca68913deaa4dbdacce6d33710"
+          }
+        },
+        {
           "client_id": "230417181657-7v30t8ogq03broga9p676p3f9lltng1a.apps.googleusercontent.com",
           "client_type": 3
         }
