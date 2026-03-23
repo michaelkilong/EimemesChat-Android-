@@ -20,7 +20,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -40,8 +39,11 @@ import com.eimemes.chat.ui.theme.AccentPurple
 fun LoginScreen(viewModel: AuthViewModel) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    var agreedToTerms by remember { mutableStateOf(true) }
+
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var agreedToTerms by remember { mutableStateOf(true) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -53,8 +55,20 @@ fun LoginScreen(viewModel: AuthViewModel) {
 
     val gradientBrush = Brush.linearGradient(
         colors = listOf(AccentBlue, AccentPurple),
-        start = Offset(0f, 0f),
-        end   = Offset(400f, 0f)
+        start  = Offset(0f, 0f),
+        end    = Offset(400f, 0f)
+    )
+
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        unfocusedBorderColor    = Color(0xFF2A2A3A),
+        focusedBorderColor      = AccentBlue,
+        unfocusedContainerColor = Color(0xFF12121F),
+        focusedContainerColor   = Color(0xFF12121F),
+        unfocusedTextColor      = Color.White,
+        focusedTextColor        = Color.White,
+        cursorColor             = AccentBlue,
+        unfocusedPlaceholderColor = Color(0xFF666688),
+        focusedPlaceholderColor   = Color(0xFF666688)
     )
 
     Box(
@@ -97,48 +111,36 @@ fun LoginScreen(viewModel: AuthViewModel) {
 
                 // Email field
                 OutlinedTextField(
-                    value         = "",
-                    onValueChange = {},
+                    value         = email,
+                    onValueChange = { email = it },
                     modifier      = Modifier.fillMaxWidth(),
-                    placeholder   = { Text("Email", color = Color(0xFF666688)) },
+                    placeholder   = { Text("Email") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    shape  = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color(0xFF2A2A3A),
-                        focusedBorderColor   = AccentBlue,
-                        unfocusedContainerColor = Color(0xFF12121F),
-                        focusedContainerColor   = Color(0xFF12121F),
-                        unfocusedTextColor   = Color.White,
-                        focusedTextColor     = Color.White
-                    )
+                    singleLine    = true,
+                    shape         = RoundedCornerShape(12.dp),
+                    colors        = fieldColors
                 )
 
                 // Password field
                 OutlinedTextField(
-                    value         = "",
-                    onValueChange = {},
+                    value         = password,
+                    onValueChange = { password = it },
                     modifier      = Modifier.fillMaxWidth(),
-                    placeholder   = { Text("Password", color = Color(0xFF666688)) },
+                    placeholder   = { Text("Password") },
+                    singleLine    = true,
                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon  = {
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
                                 if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                null,
+                                contentDescription = if (showPassword) "Hide password" else "Show password",
                                 tint = Color(0xFF666688)
                             )
                         }
                     },
                     shape  = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = Color(0xFF2A2A3A),
-                        focusedBorderColor   = AccentBlue,
-                        unfocusedContainerColor = Color(0xFF12121F),
-                        focusedContainerColor   = Color(0xFF12121F),
-                        unfocusedTextColor   = Color.White,
-                        focusedTextColor     = Color.White
-                    )
+                    colors = fieldColors
                 )
 
                 // Create Account button
@@ -147,10 +149,15 @@ fun LoginScreen(viewModel: AuthViewModel) {
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Brush.linearGradient(listOf(AccentBlue, AccentPurple))),
+                        .background(gradientBrush),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Create Account", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text(
+                        "Create Account",
+                        color      = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize   = 15.sp
+                    )
                 }
 
                 // Divider
@@ -180,13 +187,16 @@ fun LoginScreen(viewModel: AuthViewModel) {
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2A2A3A))
                 ) {
                     if (state.loading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = AccentBlue)
+                        CircularProgressIndicator(
+                            modifier    = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color       = AccentBlue
+                        )
                     } else {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Google G icon
                             Text("G", color = AccentBlue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Text("Continue with Google", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                         }
@@ -195,55 +205,38 @@ fun LoginScreen(viewModel: AuthViewModel) {
 
                 // Terms checkbox
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
-                        checked  = agreedToTerms,
+                        checked         = agreedToTerms,
                         onCheckedChange = { agreedToTerms = it },
-                        colors   = CheckboxDefaults.colors(
+                        colors          = CheckboxDefaults.colors(
                             checkedColor   = AccentBlue,
                             uncheckedColor = Color(0xFF666688)
                         )
                     )
-                    Text(
-                        "I agree to the ",
-                        fontSize = 12.sp,
-                        color    = Color(0xFF8888AA)
-                    )
-                    Text(
-                        "Terms",
-                        fontSize = 12.sp,
-                        color    = AccentBlue,
-                        textDecoration = TextDecoration.Underline
-                    )
-                    Text(" and ", fontSize = 12.sp, color = Color(0xFF8888AA))
-                    Text(
-                        "Privacy Policy",
-                        fontSize = 12.sp,
-                        color    = AccentBlue,
-                        textDecoration = TextDecoration.Underline
-                    )
+                    Row {
+                        Text("I agree to the ", fontSize = 12.sp, color = Color(0xFF8888AA))
+                        Text("Terms", fontSize = 12.sp, color = AccentBlue, textDecoration = TextDecoration.Underline)
+                        Text(" and ", fontSize = 12.sp, color = Color(0xFF8888AA))
+                        Text("Privacy Policy", fontSize = 12.sp, color = AccentBlue, textDecoration = TextDecoration.Underline)
+                    }
                 }
 
-                // Error
+                // Error message
                 state.error?.let { err ->
-                    Text(err, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    Text(
+                        err,
+                        color     = MaterialTheme.colorScheme.error,
+                        fontSize  = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
                 }
 
                 // Sign in link
-                TextButton(onClick = {}) {
-                    Text(
-                        "Already have an account? ",
-                        fontSize = 12.sp,
-                        color    = Color(0xFF8888AA)
-                    )
-                    Text(
-                        "Sign in",
-                        fontSize = 12.sp,
-                        color    = AccentBlue,
-                        textDecoration = TextDecoration.Underline
-                    )
+                Row(horizontalArrangement = Arrangement.Center) {
+                    Text("Already have an account? ", fontSize = 12.sp, color = Color(0xFF8888AA))
+                    Text("Sign in", fontSize = 12.sp, color = AccentBlue, textDecoration = TextDecoration.Underline)
                 }
             }
         }
