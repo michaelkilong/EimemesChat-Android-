@@ -1,72 +1,65 @@
 package com.eimemes.chat.ui.theme
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-// ── Dark theme colors (matching web app CSS vars) ──────────────────────
-val DarkBackground    = Color(0xFF0D0D14)
-val DarkSurface       = Color(0xFF16161F)
-val DarkSurface2      = Color(0xFF1E1E2A)
-val DarkBorder        = Color(0x26FFFFFF)
-val DarkText1         = Color(0xEEFFFFFF)
-val DarkText2         = Color(0x99FFFFFF)
-val DarkText3         = Color(0x55FFFFFF)
-val AccentBlue        = Color(0xFF0A84FF)
-val AccentDim         = Color(0x1A0A84FF)
-val UserBubble        = Color(0xFF2F2F2F)
-val GradientStart     = Color(0xFF5E9CFF)
-val GradientEnd       = Color(0xFFC96EFF)
-
-// ── Light theme colors ─────────────────────────────────────────────────
-val LightBackground   = Color(0xFFE9EAF2)
-val LightSurface      = Color(0xFFFFFFFF)
-val LightBorder       = Color(0x14000000)
-val LightText1        = Color(0xE0000000)
-val LightText2        = Color(0x8A000000)
-val LightText3        = Color(0x52000000)
-
-private val DarkColorScheme = darkColorScheme(
-    primary          = AccentBlue,
-    onPrimary        = Color.White,
-    secondary        = AccentBlue,
-    background       = DarkBackground,
-    surface          = DarkSurface,
-    surfaceVariant   = DarkSurface2,
-    onBackground     = DarkText1,
-    onSurface        = DarkText1,
-    onSurfaceVariant = DarkText2,
-    outline          = DarkBorder,
-    outlineVariant   = DarkBorder,
-    scrim            = Color(0x99000000)
+private val DarkColors = darkColorScheme(
+    primary          = Color(0xFF4FA8FF),
+    onPrimary        = Color(0xFF000000),
+    primaryContainer = Color(0xFF1A3A6E),
+    background       = Color(0xFF141417),
+    surface          = Color(0xFF1C1C24),
+    surfaceVariant   = Color(0xFF2C2C38),
+    onBackground     = Color(0xF0FFFFFF),
+    onSurface        = Color(0xF0FFFFFF),
+    onSurfaceVariant = Color(0xFF8888AA),
+    outline          = Color(0xFF2A2A3A),
+    error            = Color(0xFFFF6B6B),
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary          = AccentBlue,
-    onPrimary        = Color.White,
-    secondary        = AccentBlue,
-    background       = LightBackground,
-    surface          = LightSurface,
-    surfaceVariant   = Color(0xFFF0F1F8),
-    onBackground     = LightText1,
-    onSurface        = LightText1,
-    onSurfaceVariant = LightText2,
-    outline          = LightBorder,
-    outlineVariant   = LightBorder,
-    scrim            = Color(0x99000000)
+private val LightColors = lightColorScheme(
+    primary          = Color(0xFF0A84FF),
+    onPrimary        = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFD0E4FF),
+    background       = Color(0xFFE9EAF2),
+    surface          = Color(0xFFFFFFFF),
+    surfaceVariant   = Color(0xFFF0F0F8),
+    onBackground     = Color(0xE0000000),
+    onSurface        = Color(0xE0000000),
+    onSurfaceVariant = Color(0xFF666688),
+    outline          = Color(0xFFDDDDEE),
+    error            = Color(0xFFCC0000),
 )
+
+val AccentBlue   = Color(0xFF4FA8FF)
+val AccentPurple = Color(0xFFC96EFF)
 
 @Composable
 fun EimemesChatTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = if (darkTheme) DarkColors else LightColors
+    val view = LocalView.current
+
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+        }
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography  = Typography(),
+        typography  = AppTypography,
         content     = content
     )
 }
