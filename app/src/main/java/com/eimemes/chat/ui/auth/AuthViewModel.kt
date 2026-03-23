@@ -45,7 +45,41 @@ class AuthViewModel @Inject constructor(
                     .getResult(ApiException::class.java)
                 authRepo.signInWithGoogle(account.idToken!!)
             } catch (e: Exception) {
-                _state.update { it.copy(loading = false, error = e.message ?: "Sign-in failed") }
+                _state.update { it.copy(loading = false, error = "Google sign-in failed. Try again.") }
+            }
+        }
+    }
+
+    fun signInWithEmail(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            _state.update { it.copy(error = "Please enter your email and password.") }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                authRepo.signInWithEmail(email, password)
+            } catch (e: Exception) {
+                _state.update { it.copy(loading = false, error = "Incorrect email or password.") }
+            }
+        }
+    }
+
+    fun createAccount(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            _state.update { it.copy(error = "Please enter your email and password.") }
+            return
+        }
+        if (password.length < 6) {
+            _state.update { it.copy(error = "Password must be at least 6 characters.") }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(loading = true, error = null) }
+            try {
+                authRepo.createAccount(email, password)
+            } catch (e: Exception) {
+                _state.update { it.copy(loading = false, error = e.message ?: "Account creation failed.") }
             }
         }
     }
