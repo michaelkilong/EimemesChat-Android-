@@ -1,9 +1,10 @@
 package com.eimemes.chat.ui.components
 
-import com.eimemes.chat.util.BrowserUtil
-import androidx.compose.animation.*
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -24,23 +25,20 @@ import com.eimemes.chat.domain.model.Message
 import com.eimemes.chat.domain.model.Source
 import com.eimemes.chat.ui.theme.AccentBlue
 import com.eimemes.chat.ui.theme.AccentPurple
+import com.eimemes.chat.util.BrowserUtil
 import com.eimemes.chat.util.HapticUtil
 
 @Composable
 fun MessageBubble(message: Message, modifier: Modifier = Modifier) {
     val isUser = message.role == "user"
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
-        if (isUser) UserBubble(message.content)
-        else AssistantBubble(message)
-
+        if (isUser) UserBubble(message.content) else AssistantBubble(message)
         if (message.time.isNotBlank()) {
             Text(
-                text  = message.time,
+                message.time,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -88,7 +86,6 @@ fun AssistantBubble(message: Message) {
             )
         }
 
-        // Sources
         message.sources?.takeIf { it.isNotEmpty() }?.let { sources ->
             Spacer(Modifier.height(6.dp))
             SourcesPill(
@@ -103,10 +100,8 @@ fun AssistantBubble(message: Message) {
             )
         }
 
-        // Disclaimer
         message.disclaimer?.let { DisclaimerRow(it) }
 
-        // Action row
         Row(modifier = Modifier.padding(top = 2.dp)) {
             IconButton(onClick = {
                 HapticUtil.light(context)
@@ -120,11 +115,7 @@ fun AssistantBubble(message: Message) {
 
 @Composable
 fun StreamingBubble(text: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
@@ -145,7 +136,6 @@ private fun SourcesPill(
     onToggle: () -> Unit
 ) {
     val context = LocalContext.current
-    Spacer(Modifier.height(4.dp))
     Column {
         Row(
             modifier = Modifier
@@ -156,28 +146,33 @@ private fun SourcesPill(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(Icons.Outlined.Language, null, Modifier.size(14.dp), AccentBlue)
+            Icon(Icons.Outlined.Language, null, Modifier.size(14.dp), tint = AccentBlue)
             Text("${sources.size} sources", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Icon(if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         AnimatedVisibility(visible = expanded) {
             Column(
-                modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 sources.forEachIndexed { i, src ->
-                    val isHighlighted = expandedIndex == i
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .background(
-                                if (isHighlighted) AccentBlue.copy(alpha = 0.12f)
+                                if (expandedIndex == i) AccentBlue.copy(alpha = 0.12f)
                                 else MaterialTheme.colorScheme.surface
                             )
                             .clickable {
                                 HapticUtil.light(context)
-                                runCatching { BrowserUtil.openUrl(context, src.url) }
+                                BrowserUtil.openUrl(context, src.url)
                             }
                             .padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -186,7 +181,11 @@ private fun SourcesPill(
                         Text("${i + 1}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AccentBlue)
                         Column(Modifier.weight(1f)) {
                             Text(src.title, fontSize = 12.sp, maxLines = 1, color = MaterialTheme.colorScheme.onSurface)
-                            Text(Uri.parse(src.url).host ?: src.url, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                Uri.parse(src.url).host ?: src.url,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                         Icon(Icons.Outlined.OpenInNew, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -205,7 +204,10 @@ private fun DisclaimerRow(disclaimer: String) {
     }
     Spacer(Modifier.height(4.dp))
     Row(
-        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 10.dp, vertical = 6.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
