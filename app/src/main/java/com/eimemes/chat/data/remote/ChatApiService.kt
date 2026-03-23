@@ -1,12 +1,12 @@
 package com.eimemes.chat.data.remote
 
-import android.util.Log
-import com.google.firebase.auth.FirebaseAuth
+import com.eimemes.chat.domain.model.Attachment
+import com.eimemes.chat.domain.model.Message
+import com.eimemes.chat.domain.model.Source
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.tasks.await
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -16,99 +16,90 @@ import okhttp3.sse.EventSources
 import javax.inject.Inject
 import javax.inject.Singleton
 
+sealed class StreamEvent {
+    data class Token(val text: String) : StreamEvent()
+    data object Searching : StreamEvent()
+    data class Done(val model: String, val disclaimer: String?, val sources: List<Source>?) : StreamEvent()
+    data class Title(val title: String) : StreamEvent()
+    data class OutputBlocked(val reply: String) : StreamEvent()
+    data class Error(val message: String) : StreamEvent()
+}
+
 @Singleton
-class ChatApiService @Inject constructor(
-    private val okHttpClient: OkHttpClient,
-    private val auth: FirebaseAuth
-) {
-    companion object {
-        private const val TAG = "ChatApiService"
-        private const val BASE_URL = "https://eimemes-chat-ai.vercel.app"
-    }
+class ChatApiService @Inject constructor(private val client: OkHttpClient) {
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+    private val API_BASE = "https://eimemes-chat-ai.vercel.app"
 
-    private val json = Json { ignoreUnknownKeys = true }
+    fun streamChat(
+        message: String,
+        history: List<Message>,
+        isFirstMessage: Boolean,
+        idToken: String,
+        attachment: Attachment? = null,
+        useWebSearch: Boolean = false
+    ): Flow<StreamEvent> = callbackFlow {
 
-    fun streamChat(request: ChatRequest): Flow<StreamState> = callbackFlow {
-        trySend(StreamState.Typing)
-
-        val token = try {
-            auth.currentUser?.getIdToken(false)?.await()?.token
-        } catch (e: Exception) {
-            trySend(StreamState.Error("Authentication failed. Please sign in again."))
-            close()
-            return@callbackFlow
+        val bodyMap = buildJsonObject {
+            put("message", message)
+            put("isFirstMessage", isFirstMessage)
+            put("useWebSearch", useWebSearch)
+            putJsonArray("history") {
+                history.takeLast(20).forEach { msg ->
+                    addJsonObject {
+                        put("role", msg.role)
+                        put("content", msg.content)
+                    }
+                }
+            }
+            attachment?.let {
+                putJsonObject("attachment") {
+                    put("name", it.name)
+                    put("type", it.type.name.lowercase())
+                    put("mimeType", it.mimeType)
+                    put("content", it.content)
+                }
+            }
         }
 
-        if (token == null) {
-            trySend(StreamState.Error("Not signed in."))
-            close()
-            return@callbackFlow
-        }
-
-        val body = Json.encodeToString(ChatRequest.serializer(), request)
-            .toRequestBody("application/json".toMediaType())
-
-        val httpRequest = Request.Builder()
-            .url("$BASE_URL/api/chat")
-            .post(body)
-            .header("Authorization", "Bearer $token")
-            .header("Accept", "text/event-stream")
+        val request = Request.Builder()
+            .url("$API_BASE/api/chat")
+            .addHeader("Authorization", "Bearer $idToken")
+            .addHeader("Accept", "text/event-stream")
+            .post(json.encodeToString(JsonObject.serializer(), bodyMap).toRequestBody("application/json".toMediaType()))
             .build()
 
-        var accumulated = ""
-
-        val listener = object : EventSourceListener() {
+        val factory = EventSources.createFactory(client)
+        val source = factory.newEventSource(request, object : EventSourceListener() {
             override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
-                if (data == "[DONE]") return
                 try {
-                    val event = json.decodeFromString<SseEvent>(data)
+                    val parsed = json.parseToJsonElement(data).jsonObject
                     when {
-                        event.searching == true -> trySend(StreamState.Searching)
-                        event.token != null -> {
-                            accumulated += event.token
-                            trySend(StreamState.Streaming(accumulated))
-                        }
-                        event.outputBlocked == true && event.safeReply != null -> {
-                            accumulated = event.safeReply
-                            trySend(StreamState.Streaming(accumulated))
-                        }
-                        event.done == true -> {
-                            trySend(StreamState.Done(
-                                text = accumulated,
-                                model = event.model ?: "",
-                                disclaimer = event.disclaimer,
-                                sources = event.sources?.map { SseSource(it.title, it.url) } ?: emptyList()
-                            ))
-                            close()
-                        }
-                        event.error != null -> {
-                            trySend(StreamState.Error(event.error))
-                            close()
+                        parsed["error"] != null -> trySend(StreamEvent.Error(parsed["error"]!!.jsonPrimitive.content))
+                        parsed["token"] != null -> trySend(StreamEvent.Token(parsed["token"]!!.jsonPrimitive.content))
+                        parsed["searching"] != null -> trySend(StreamEvent.Searching)
+                        parsed["outputBlocked"] != null -> trySend(StreamEvent.OutputBlocked(parsed["safeReply"]?.jsonPrimitive?.contentOrNull ?: ""))
+                        parsed["title"] != null -> trySend(StreamEvent.Title(parsed["title"]!!.jsonPrimitive.content))
+                        parsed["done"] != null -> {
+                            val model = parsed["model"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val disclaimer = parsed["disclaimer"]?.jsonPrimitive?.contentOrNull
+                            val sources = parsed["sources"]?.jsonArray?.map {
+                                val o = it.jsonObject
+                                Source(title = o["title"]?.jsonPrimitive?.content ?: "", url = o["url"]?.jsonPrimitive?.content ?: "")
+                            }
+                            trySend(StreamEvent.Done(model, disclaimer, sources))
                         }
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Parse error: ${e.message}")
-                }
+                } catch (_: Exception) {}
             }
 
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                val msg = when (response?.code) {
-                    429 -> "Daily message limit reached. Resets tomorrow."
-                    401 -> "Session expired. Please sign in again."
-                    else -> "Connection error. Please try again."
-                }
-                trySend(StreamState.Error(msg))
+                trySend(StreamEvent.Error(t?.message ?: "Connection failed"))
                 close()
             }
 
-            override fun onClosed(eventSource: EventSource) {
-                close()
-            }
-        }
+            override fun onClosed(eventSource: EventSource) { close() }
+        })
 
-        val eventSource = EventSources.createFactory(okHttpClient)
-            .newEventSource(httpRequest, listener)
-
-        awaitClose { eventSource.cancel() }
+        awaitClose { source.cancel() }
     }
 }
