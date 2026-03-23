@@ -3,9 +3,9 @@ package com.eimemes.chat.ui.auth
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,6 +44,7 @@ fun LoginScreen(viewModel: AuthViewModel) {
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var agreedToTerms by remember { mutableStateOf(true) }
+    var isSignIn by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -60,13 +61,13 @@ fun LoginScreen(viewModel: AuthViewModel) {
     )
 
     val fieldColors = OutlinedTextFieldDefaults.colors(
-        unfocusedBorderColor    = Color(0xFF2A2A3A),
-        focusedBorderColor      = AccentBlue,
-        unfocusedContainerColor = Color(0xFF12121F),
-        focusedContainerColor   = Color(0xFF12121F),
-        unfocusedTextColor      = Color.White,
-        focusedTextColor        = Color.White,
-        cursorColor             = AccentBlue,
+        unfocusedBorderColor      = Color(0xFF2A2A3A),
+        focusedBorderColor        = AccentBlue,
+        unfocusedContainerColor   = Color(0xFF12121F),
+        focusedContainerColor     = Color(0xFF12121F),
+        unfocusedTextColor        = Color.White,
+        focusedTextColor          = Color.White,
+        cursorColor               = AccentBlue,
         unfocusedPlaceholderColor = Color(0xFF666688),
         focusedPlaceholderColor   = Color(0xFF666688)
     )
@@ -101,7 +102,7 @@ fun LoginScreen(viewModel: AuthViewModel) {
                 )
 
                 Text(
-                    "Create your account to get started",
+                    if (isSignIn) "Welcome back" else "Create your account to get started",
                     fontSize  = 13.sp,
                     color     = Color(0xFF8888AA),
                     textAlign = TextAlign.Center
@@ -111,30 +112,30 @@ fun LoginScreen(viewModel: AuthViewModel) {
 
                 // Email field
                 OutlinedTextField(
-                    value         = email,
-                    onValueChange = { email = it },
-                    modifier      = Modifier.fillMaxWidth(),
-                    placeholder   = { Text("Email") },
+                    value           = email,
+                    onValueChange   = { email = it },
+                    modifier        = Modifier.fillMaxWidth(),
+                    placeholder     = { Text("Email") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(12.dp),
-                    colors        = fieldColors
+                    singleLine      = true,
+                    shape           = RoundedCornerShape(12.dp),
+                    colors          = fieldColors
                 )
 
                 // Password field
                 OutlinedTextField(
-                    value         = password,
-                    onValueChange = { password = it },
-                    modifier      = Modifier.fillMaxWidth(),
-                    placeholder   = { Text("Password") },
-                    singleLine    = true,
+                    value                = password,
+                    onValueChange        = { password = it },
+                    modifier             = Modifier.fillMaxWidth(),
+                    placeholder          = { Text("Password") },
+                    singleLine           = true,
                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    trailingIcon  = {
+                    keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon         = {
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
                                 if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                contentDescription = if (showPassword) "Hide password" else "Show password",
+                                contentDescription = null,
                                 tint = Color(0xFF666688)
                             )
                         }
@@ -143,21 +144,32 @@ fun LoginScreen(viewModel: AuthViewModel) {
                     colors = fieldColors
                 )
 
-                // Create Account button
+                // Primary button — Create Account or Sign In
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(gradientBrush),
+                        .background(gradientBrush)
+                        .clickable(enabled = !state.loading) {
+                            if (isSignIn) {
+                                viewModel.signInWithEmail(email, password)
+                            } else {
+                                viewModel.createAccount(email, password)
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "Create Account",
-                        color      = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize   = 15.sp
-                    )
+                    if (state.loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = Color.White)
+                    } else {
+                        Text(
+                            if (isSignIn) "Sign In" else "Create Account",
+                            color      = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize   = 15.sp
+                        )
+                    }
                 }
 
                 // Divider
@@ -181,32 +193,20 @@ fun LoginScreen(viewModel: AuthViewModel) {
                     enabled  = !state.loading && agreedToTerms,
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color(0xFF12121F)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2A2A3A))
+                    colors   = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF12121F)),
+                    border   = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2A2A3A))
                 ) {
-                    if (state.loading) {
-                        CircularProgressIndicator(
-                            modifier    = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color       = AccentBlue
-                        )
-                    } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text("G", color = AccentBlue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("Continue with Google", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                        }
+                    Row(
+                        verticalAlignment      = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text("G", color = AccentBlue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Continue with Google", color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
                 }
 
                 // Terms checkbox
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
                         checked         = agreedToTerms,
                         onCheckedChange = { agreedToTerms = it },
@@ -217,9 +217,21 @@ fun LoginScreen(viewModel: AuthViewModel) {
                     )
                     Row {
                         Text("I agree to the ", fontSize = 12.sp, color = Color(0xFF8888AA))
-                        Text("Terms", fontSize = 12.sp, color = AccentBlue, textDecoration = TextDecoration.Underline)
+                        Text(
+                            "Terms",
+                            fontSize       = 12.sp,
+                            color          = AccentBlue,
+                            textDecoration = TextDecoration.Underline,
+                            modifier       = Modifier.clickable { }
+                        )
                         Text(" and ", fontSize = 12.sp, color = Color(0xFF8888AA))
-                        Text("Privacy Policy", fontSize = 12.sp, color = AccentBlue, textDecoration = TextDecoration.Underline)
+                        Text(
+                            "Privacy Policy",
+                            fontSize       = 12.sp,
+                            color          = AccentBlue,
+                            textDecoration = TextDecoration.Underline,
+                            modifier       = Modifier.clickable { }
+                        )
                     }
                 }
 
@@ -227,16 +239,31 @@ fun LoginScreen(viewModel: AuthViewModel) {
                 state.error?.let { err ->
                     Text(
                         err,
-                        color     = MaterialTheme.colorScheme.error,
+                        color     = Color(0xFFFF6B6B),
                         fontSize  = 12.sp,
                         textAlign = TextAlign.Center
                     )
                 }
 
-                // Sign in link
-                Row(horizontalArrangement = Arrangement.Center) {
-                    Text("Already have an account? ", fontSize = 12.sp, color = Color(0xFF8888AA))
-                    Text("Sign in", fontSize = 12.sp, color = AccentBlue, textDecoration = TextDecoration.Underline)
+                // Toggle sign in / create account
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.clickable {
+                        isSignIn = !isSignIn
+                        viewModel.clearError()
+                    }
+                ) {
+                    Text(
+                        if (isSignIn) "Don't have an account? " else "Already have an account? ",
+                        fontSize = 12.sp,
+                        color    = Color(0xFF8888AA)
+                    )
+                    Text(
+                        if (isSignIn) "Create one" else "Sign in",
+                        fontSize       = 12.sp,
+                        color          = AccentBlue,
+                        textDecoration = TextDecoration.Underline
+                    )
                 }
             }
         }
