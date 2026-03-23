@@ -53,13 +53,10 @@ class ChatViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             convRepo.observeConversations().collect { convs ->
-                val hasHistory = convs.isNotEmpty()
-                _state.update { it.copy(conversations = convs, isFirstSession = !hasHistory) }
+                _state.update { it.copy(conversations = convs, isFirstSession = convs.isEmpty()) }
             }
         }
     }
-
-    // ── Conversation management ────────────────────────────────────
 
     fun newConversation() {
         HapticUtil.light(context)
@@ -95,8 +92,6 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    // ── Input ──────────────────────────────────────────────────────
-
     fun onInputChange(text: String) = _state.update { it.copy(inputText = text) }
 
     fun toggleWebSearch() {
@@ -105,13 +100,9 @@ class ChatViewModel @Inject constructor(
     }
 
     fun setAttachment(attachment: Attachment?) = _state.update { it.copy(attachment = attachment) }
-
     fun setSidebarOpen(open: Boolean) = _state.update { it.copy(sidebarOpen = open) }
-
     fun clearError() = _state.update { it.copy(error = null) }
     fun showError(msg: String) = _state.update { it.copy(error = msg) }
-
-    // ── Send message ───────────────────────────────────────────────
 
     fun sendMessage() {
         val text = _state.value.inputText.trim()
@@ -119,11 +110,7 @@ class ChatViewModel @Inject constructor(
 
         HapticUtil.medium(context)
 
-        val userMsg = Message(
-            role    = "user",
-            content = text,
-            time    = DateUtil.now()
-        )
+        val userMsg = Message(role = "user", content = text, time = DateUtil.now())
 
         _state.update { it.copy(
             inputText     = "",
@@ -137,35 +124,32 @@ class ChatViewModel @Inject constructor(
 
         streamJob = viewModelScope.launch {
             try {
-                // Ensure conversation exists
                 val convId = _state.value.activeConvId ?: convRepo.createConversation().also { id ->
                     _state.update { it.copy(activeConvId = id) }
                 }
 
-                val idToken  = authRepo.getIdToken()
-                val history  = _state.value.messages.dropLast(1) // exclude the msg we just added
-                val isFirst  = history.isEmpty()
+                val idToken   = authRepo.getIdToken()
+                val history   = _state.value.messages.dropLast(1)
+                val isFirst   = history.isEmpty()
                 val webSearch = _state.value.webSearchEnabled
 
-                // Save user message to Firestore
                 convRepo.saveMessage(convId, userMsg)
 
-                // Stream from API
                 chatApi.streamChat(
-                    message          = text,
-                    history          = history,
-                    isFirstMessage   = isFirst,
-                    idToken          = idToken,
-                    attachment       = _state.value.attachment,
-                    useWebSearch     = webSearch
+                    message        = text,
+                    history        = history,
+                    isFirstMessage = isFirst,
+                    idToken        = idToken,
+                    attachment     = _state.value.attachment,
+                    useWebSearch   = webSearch
                 ).collect { event ->
                     when (event) {
-                        is StreamEvent.Token  -> _state.update { it.copy(
+                        is StreamEvent.Token -> _state.update { it.copy(
                             streamingText = it.streamingText + event.text,
                             isSearching   = false
                         )}
                         is StreamEvent.Searching -> _state.update { it.copy(isSearching = true) }
-                        is StreamEvent.Done   -> {
+                        is StreamEvent.Done -> {
                             val assistantMsg = Message(
                                 role       = "assistant",
                                 content    = _state.value.streamingText,
@@ -177,17 +161,17 @@ class ChatViewModel @Inject constructor(
                             convRepo.saveMessage(convId, assistantMsg)
                             HapticUtil.success(context)
                             _state.update { it.copy(
-                                messages      = it.messages + assistantMsg,
-                                streamingText = "",
-                                isStreaming   = false,
-                                isSearching   = false,
-                                sources       = event.sources,
-                                attachment    = null,
+                                messages         = it.messages + assistantMsg,
+                                streamingText    = "",
+                                isStreaming      = false,
+                                isSearching      = false,
+                                sources          = event.sources,
+                                attachment       = null,
                                 webSearchEnabled = false
                             )}
                         }
-                        is StreamEvent.Title  -> {
-                            convRepo.saveMessage(convId, userMsg.copy(content = "__title_update__"), newTitle = event.title)
+                        is StreamEvent.Title -> {
+                            convRepo.updateTitle(convId, event.title)
                         }
                         is StreamEvent.OutputBlocked -> {
                             val blockedMsg = Message(
@@ -204,16 +188,14 @@ class ChatViewModel @Inject constructor(
                                 isSearching   = false
                             )}
                         }
-                        is StreamEvent.Error  -> {
-                            val errMsg = event.message
-                            val isDailyLimit = errMsg.contains("limit", ignoreCase = true)
+                        is StreamEvent.Error -> {
                             HapticUtil.error(context)
                             _state.update { it.copy(
                                 isStreaming       = false,
                                 isSearching       = false,
                                 streamingText     = "",
-                                error             = errMsg,
-                                dailyLimitReached = isDailyLimit
+                                error             = event.message,
+                                dailyLimitReached = event.message.contains("limit", ignoreCase = true)
                             )}
                         }
                     }
@@ -235,18 +217,9 @@ class ChatViewModel @Inject constructor(
         val partial = _state.value.streamingText
         if (partial.isNotBlank()) {
             val msg = Message(role = "assistant", content = partial, time = DateUtil.now())
-            _state.update { it.copy(
-                messages      = it.messages + msg,
-                streamingText = "",
-                isStreaming   = false
-            )}
+            _state.update { it.copy(messages = it.messages + msg, streamingText = "", isStreaming = false) }
         } else {
             _state.update { it.copy(streamingText = "", isStreaming = false) }
         }
     }
 }
-
-    // Public helper called from ChatScreen for file read errors
-    fun showError(message: String) {
-        _state.update { it.copy(error = message) }
-    }
