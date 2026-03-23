@@ -42,8 +42,19 @@ class AuthRepository @Inject constructor(
         return result.user!!
     }
 
+    suspend fun signInWithEmail(email: String, password: String): FirebaseUser {
+        val result = auth.signInWithEmailAndPassword(email, password).await()
+        return result.user!!
+    }
+
+    suspend fun createAccount(email: String, password: String): FirebaseUser {
+        val result = auth.createUserWithEmailAndPassword(email, password).await()
+        return result.user!!
+    }
+
     suspend fun getIdToken(): String {
-        return auth.currentUser?.getIdToken(false)?.await()?.token ?: throw Exception("Not authenticated")
+        return auth.currentUser?.getIdToken(false)?.await()?.token
+            ?: throw Exception("Not authenticated")
     }
 
     fun signOut() = auth.signOut()
