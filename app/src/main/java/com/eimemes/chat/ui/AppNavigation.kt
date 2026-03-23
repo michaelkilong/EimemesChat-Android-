@@ -1,6 +1,5 @@
 package com.eimemes.chat.ui
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -14,8 +13,7 @@ import com.eimemes.chat.ui.chat.ChatScreen
 import com.eimemes.chat.ui.chat.ChatViewModel
 import com.eimemes.chat.ui.personalization.PersonalizationScreen
 import com.eimemes.chat.ui.settings.SettingsScreen
-import com.eimemes.chat.ui.theme.EimemesChatTheme
-import com.eimemes.chat.ui.theme.ThemeViewModel
+import kotlinx.coroutines.delay
 
 object Routes {
     const val CHAT            = "chat"
@@ -27,51 +25,53 @@ object Routes {
 
 @Composable
 fun AppNavigation() {
-    val themeViewModel: ThemeViewModel = hiltViewModel()
-    val darkModePref by themeViewModel.darkMode.collectAsState()
-    val systemDark = isSystemInDarkTheme()
-    val isDark = darkModePref ?: systemDark
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val authState by authViewModel.state.collectAsState()
 
-    EimemesChatTheme(darkTheme = isDark) {
-        val authViewModel: AuthViewModel = hiltViewModel()
-        val authState by authViewModel.state.collectAsState()
+    // Show splash for minimum 2 seconds while auth state loads
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(2000)
+        showSplash = false
+    }
 
-        when {
-            authState.loading   -> { /* splash screen covers this */ }
-            authState.user == null -> LoginScreen(viewModel = authViewModel)
-            else -> {
-                val navController = rememberNavController()
-                val chatViewModel: ChatViewModel = hiltViewModel()
+    when {
+        showSplash || authState.loading -> {
+            SplashScreen()
+        }
+        authState.user == null -> {
+            LoginScreen(viewModel = authViewModel)
+        }
+        else -> {
+            val navController = rememberNavController()
+            val chatViewModel: ChatViewModel = hiltViewModel()
 
-                NavHost(navController = navController, startDestination = Routes.CHAT) {
-                    composable(Routes.CHAT) {
-                        ChatScreen(
-                            viewModel         = chatViewModel,
-                            onNavigateSettings = { navController.navigate(Routes.SETTINGS) }
-                        )
-                    }
-                    composable(Routes.SETTINGS) {
-                        SettingsScreen(
-                            authViewModel             = authViewModel,
-                            themeViewModel            = themeViewModel,
-                            isDark                    = isDark,
-                            onBack                    = { navController.popBackStack() },
-                            onNavigatePersonalization = { navController.navigate(Routes.PERSONALIZATION) },
-                            onNavigateAbout           = { navController.navigate(Routes.ABOUT) }
-                        )
-                    }
-                    composable(Routes.PERSONALIZATION) {
-                        PersonalizationScreen(onBack = { navController.popBackStack() })
-                    }
-                    composable(Routes.ABOUT) {
-                        AboutScreen(
-                            onBack     = { navController.popBackStack() },
-                            onLicenses = { navController.navigate(Routes.LICENSES) }
-                        )
-                    }
-                    composable(Routes.LICENSES) {
-                        LicensesScreen(onBack = { navController.popBackStack() })
-                    }
+            NavHost(navController = navController, startDestination = Routes.CHAT) {
+                composable(Routes.CHAT) {
+                    ChatScreen(
+                        viewModel          = chatViewModel,
+                        onNavigateSettings = { navController.navigate(Routes.SETTINGS) }
+                    )
+                }
+                composable(Routes.SETTINGS) {
+                    SettingsScreen(
+                        authViewModel             = authViewModel,
+                        onBack                    = { navController.popBackStack() },
+                        onNavigatePersonalization = { navController.navigate(Routes.PERSONALIZATION) },
+                        onNavigateAbout           = { navController.navigate(Routes.ABOUT) }
+                    )
+                }
+                composable(Routes.PERSONALIZATION) {
+                    PersonalizationScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Routes.ABOUT) {
+                    AboutScreen(
+                        onBack     = { navController.popBackStack() },
+                        onLicenses = { navController.navigate(Routes.LICENSES) }
+                    )
+                }
+                composable(Routes.LICENSES) {
+                    LicensesScreen(onBack = { navController.popBackStack() })
                 }
             }
         }
