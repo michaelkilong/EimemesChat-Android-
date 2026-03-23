@@ -16,15 +16,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.eimemes.chat.ui.auth.AuthViewModel
-import com.eimemes.chat.ui.theme.AccentBlue
-import com.eimemes.chat.ui.theme.ThemeViewModel
 import com.eimemes.chat.util.HapticUtil
 
 @Composable
 fun SettingsScreen(
-    authViewModel:  AuthViewModel,
-    themeViewModel: ThemeViewModel,
-    isDark: Boolean,
+    authViewModel: AuthViewModel,
     onBack: () -> Unit,
     onNavigatePersonalization: () -> Unit,
     onNavigateAbout: () -> Unit
@@ -39,7 +35,6 @@ fun SettingsScreen(
             .background(MaterialTheme.colorScheme.background)
             .systemBarsPadding()
     ) {
-        // Top bar
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -52,7 +47,6 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // ── Profile card ──────────────────────────────────────
             authState.user?.let { user ->
                 SettingsCard {
                     Row(
@@ -79,34 +73,6 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(4.dp))
-
-            // ── Appearance ────────────────────────────────────────
-            SectionLabel("Appearance")
-            SettingsCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Icon(
-                        if (isDark) Icons.Outlined.DarkMode else Icons.Outlined.LightMode,
-                        null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(if (isDark) "Dark mode" else "Light mode", fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Switch(
-                        checked  = isDark,
-                        onCheckedChange = {
-                            HapticUtil.light(context)
-                            themeViewModel.setDarkMode(it)
-                        },
-                        colors = SwitchDefaults.colors(checkedThumbColor = AccentBlue, checkedTrackColor = AccentBlue.copy(alpha = 0.4f))
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(4.dp))
-
-            // ── Preferences ───────────────────────────────────────
             SectionLabel("Preferences")
             SettingsCard {
                 SettingsRow(Icons.Outlined.Tune, "Personalization") {
@@ -115,8 +81,6 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(4.dp))
-
-            // ── About ─────────────────────────────────────────────
             SectionLabel("About")
             SettingsCard {
                 SettingsRow(Icons.Outlined.Info, "About EimemesChat AI") {
@@ -125,8 +89,6 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.height(4.dp))
-
-            // ── Account ───────────────────────────────────────────
             SectionLabel("Account")
             SettingsCard {
                 SettingsRow(Icons.Outlined.Logout, "Sign out", tint = MaterialTheme.colorScheme.error) {
