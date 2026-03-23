@@ -4,34 +4,27 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Message(
-    val role: String = "",
-    val content: String = "",
-    val time: String = "",
-    val model: String = "",
-    val disclaimer: String? = null,   // "critical" | "web" | null
-    val sources: List<Source>? = null,
-    val attachment: AttachmentMeta? = null
+    val role: String,
+    val content: String,
+    val time: String,
+    val model: String? = null,
+    val disclaimer: String? = null,
+    val sources: List<Source>? = null
 )
 
 @Serializable
 data class Source(
-    val title: String = "",
-    val url: String = ""
-)
-
-@Serializable
-data class AttachmentMeta(
-    val name: String = "",
-    val type: String = ""
+    val title: String,
+    val url: String
 )
 
 @Serializable
 data class Conversation(
     val id: String = "",
     val title: String = "New conversation",
-    val messages: List<Message> = emptyList(),
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val messages: List<Message> = emptyList()
 )
 
 @Serializable
@@ -42,11 +35,11 @@ data class UserPreferences(
     val customInstructions: String = ""
 )
 
-data class ChatAttachment(
+data class Attachment(
     val name: String,
     val type: AttachmentType,
     val mimeType: String,
-    val content: String   // base64 for images, extracted text for docs
+    val content: String
 )
 
 enum class AttachmentType { IMAGE, PDF, TEXT, DOCX }
