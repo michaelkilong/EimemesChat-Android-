@@ -26,9 +26,6 @@ class AuthViewModel @Inject constructor(
     private val _state = MutableStateFlow(AuthUiState())
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
-    val webClientId: String get() = _webClientId
-    private var _webClientId: String = ""
-
     init {
         viewModelScope.launch {
             authRepo.authState.collect { user ->
@@ -36,8 +33,6 @@ class AuthViewModel @Inject constructor(
             }
         }
     }
-
-    fun setWebClientId(id: String) { _webClientId = id }
 
     fun getGoogleSignInIntent(webClientId: String) =
         authRepo.getGoogleSignInClient(webClientId).signInIntent
@@ -55,9 +50,6 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun signOut() {
-        authRepo.signOut()
-    }
-
+    fun signOut() = authRepo.signOut()
     fun clearError() = _state.update { it.copy(error = null) }
 }
