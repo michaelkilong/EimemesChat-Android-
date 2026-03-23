@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import com.eimemes.chat.domain.model.Conversation
 import com.eimemes.chat.ui.theme.AccentBlue
-import com.eimemes.chat.ui.theme.AccentPurple
 import com.eimemes.chat.util.HapticUtil
 import java.text.SimpleDateFormat
 import java.util.*
@@ -57,7 +56,6 @@ fun SidebarDrawer(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
 
-                // ── Header ─────────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -66,7 +64,6 @@ fun SidebarDrawer(
                     IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, "Close", Modifier.size(20.dp)) }
                 }
 
-                // ── Search bar ─────────────────────────────────────
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -86,7 +83,6 @@ fun SidebarDrawer(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline)
 
-                // ── New conversation ───────────────────────────────
                 val context = LocalContext.current
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { onNewChat() }.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -99,7 +95,6 @@ fun SidebarDrawer(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-                // ── Conversation list ──────────────────────────────
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(filtered, key = { it.id }) { conv ->
                         ConversationRow(
@@ -122,7 +117,6 @@ fun SidebarDrawer(
                     }
                 }
 
-                // ── Footer: conversation count ─────────────────────
                 if (conversations.isNotEmpty()) {
                     Box(Modifier.fillMaxWidth().padding(12.dp).navigationBarsPadding(), Alignment.Center) {
                         Text("${conversations.size} conversation${if (conversations.size != 1) "s" else ""}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
